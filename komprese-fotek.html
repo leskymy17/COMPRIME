@@ -1,0 +1,1237 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Komprese a konverze fotek</title>
+<style>
+  :root{
+    --bg:#0b0d12;
+    --panel:#12151d;
+    --panel-2:#1a1f2a;
+    --panel-3:#20263380;
+    --border:#262c38;
+    --text:#eef0f5;
+    --text-dim:#97a0b3;
+    --text-faint:#6b7286;
+    --accent:#5b7cfa;
+    --accent-2:#8aa0ff;
+    --success:#34d399;
+    --success-2:#8ce07a;
+    --warning:#f5d76e;
+    --danger:#f2596b;
+    --radius-lg:18px;
+    --radius-md:12px;
+    --radius-sm:8px;
+    --shadow:0 10px 30px rgba(0,0,0,.35);
+    color-scheme: dark;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:
+      radial-gradient(1200px 600px at 15% -10%, #182036 0%, transparent 60%),
+      radial-gradient(1000px 500px at 110% 10%, #1b1430 0%, transparent 55%),
+      var(--bg);
+    color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+    min-height:100vh;
+    -webkit-font-smoothing:antialiased;
+  }
+  h1,h2,h3{margin:0;}
+  p{margin:0;}
+  button{font-family:inherit;}
+  ::selection{background:var(--accent);color:#fff;}
+
+  /* ---------- topbar ---------- */
+  .topbar{
+    display:flex;align-items:center;gap:16px;flex-wrap:wrap;
+    padding:16px 24px;
+    border-bottom:1px solid var(--border);
+    position:sticky;top:0;z-index:20;
+    background:rgba(11,13,18,.85);
+    backdrop-filter:blur(10px);
+  }
+  .brand{display:flex;align-items:center;gap:10px;}
+  .brand-mark{
+    width:34px;height:34px;border-radius:10px;
+    background:linear-gradient(135deg,var(--accent),#8a5bfa);
+    display:flex;align-items:center;justify-content:center;flex-shrink:0;
+  }
+  .brand-mark svg{width:18px;height:18px;}
+  .brand h1{font-size:17px;font-weight:700;letter-spacing:-.01em;}
+  .topbar-spacer{flex:1;}
+  .topbar-actions{display:flex;gap:10px;align-items:center;}
+  #busyIndicator{display:flex;align-items:center;gap:8px;color:var(--text-dim);font-size:13px;}
+
+  /* ---------- buttons ---------- */
+  .btn{
+    padding:10px 16px;border-radius:10px;border:1px solid var(--border);
+    background:var(--panel-2);color:var(--text);font-size:13.5px;font-weight:600;
+    cursor:pointer;transition:background .15s ease,transform .12s ease,border-color .15s ease,opacity .15s ease;
+    white-space:nowrap;
+  }
+  .btn:hover{background:#232a3a;}
+  .btn:active{transform:scale(.97);}
+  .btn:focus-visible{outline:2px solid var(--accent-2);outline-offset:2px;}
+  .btn-primary{background:var(--accent);border-color:var(--accent);color:#fff;}
+  .btn-primary:hover{background:#6f8dff;}
+  .btn-secondary{background:transparent;border-color:var(--accent);color:var(--accent-2);}
+  .btn-secondary:hover{background:rgba(91,124,250,.12);}
+  .btn-ghost{background:transparent;border-color:transparent;color:var(--text-dim);}
+  .btn-ghost:hover{background:var(--panel-2);color:var(--text);}
+  .btn-danger-ghost{background:transparent;border-color:transparent;color:var(--danger);}
+  .btn-danger-ghost:hover{background:rgba(242,89,107,.12);}
+  .btn-sm{padding:7px 11px;font-size:12px;}
+  .btn:disabled{opacity:.4;cursor:not-allowed;}
+  .btn[hidden]{display:none;}
+
+  /* ---------- summary bar ---------- */
+  .summary-bar{
+    display:flex;align-items:center;gap:28px;flex-wrap:wrap;
+    padding:14px 24px;margin:16px 24px 0;
+    background:var(--panel);border:1px solid var(--border);border-radius:var(--radius-lg);
+    box-shadow:var(--shadow);
+  }
+  .summary-bar[hidden]{display:none;}
+  .summary-item{display:flex;flex-direction:column;gap:2px;}
+  .summary-value{font-size:19px;font-weight:700;letter-spacing:-.01em;}
+  .summary-value.savings{color:var(--success);}
+  .summary-label{font-size:11.5px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.04em;}
+  .summary-actions{margin-left:auto;display:flex;gap:10px;}
+
+  /* ---------- layout ---------- */
+  .app{
+    display:grid;
+    grid-template-columns:280px minmax(0,1fr) 320px;
+    grid-template-areas:"list main settings";
+    gap:20px;
+    padding:20px 24px 48px;
+    max-width:1680px;
+    margin:0 auto;
+  }
+  @media (max-width:1000px){
+    .app{grid-template-columns:1fr;grid-template-areas:"main" "list" "settings";}
+  }
+  .panel{
+    background:var(--panel);border:1px solid var(--border);border-radius:var(--radius-lg);
+    box-shadow:var(--shadow);padding:18px;
+  }
+  .panel-list{grid-area:list;display:flex;flex-direction:column;min-height:200px;max-height:calc(100vh - 160px);}
+  .panel-main{grid-area:main;min-height:520px;display:flex;flex-direction:column;position:relative;}
+  .panel-settings{grid-area:settings;height:fit-content;position:sticky;top:88px;}
+  @media (max-width:1000px){ .panel-settings{position:static;} .panel-list{max-height:420px;} }
+
+  .panel h2{font-size:14px;font-weight:700;letter-spacing:-.01em;}
+
+  /* ---------- list panel ---------- */
+  .list-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
+  .photo-list{list-style:none;margin:0;padding:0;overflow-y:auto;display:flex;flex-direction:column;gap:8px;}
+  .photo-item{
+    display:flex;align-items:stretch;gap:6px;border-radius:var(--radius-md);
+    border:1px solid var(--border);background:var(--panel-2);overflow:hidden;
+    transition:border-color .15s ease,background .15s ease;
+  }
+  .photo-item.selected{border-color:var(--accent);background:#1a2036;}
+  .photo-item-main{
+    flex:1;display:flex;align-items:center;gap:10px;padding:8px;border:none;background:transparent;
+    color:var(--text);cursor:pointer;text-align:left;min-width:0;border-radius:var(--radius-md);
+  }
+  .photo-item-main:hover{background:rgba(255,255,255,.03);}
+  .photo-item-main:focus-visible{outline:2px solid var(--accent-2);outline-offset:-2px;}
+  .thumb-wrap{
+    width:48px;height:48px;border-radius:8px;overflow:hidden;flex-shrink:0;
+    background:#0d0f15;display:flex;align-items:center;justify-content:center;
+  }
+  .thumb-wrap img{width:100%;height:100%;object-fit:cover;display:block;}
+  .thumb-placeholder{width:100%;height:100%;background:linear-gradient(135deg,#1c2130,#12151d);}
+  .photo-item-info{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1;}
+  .li-name{font-size:12.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:150px;}
+  .li-size{font-size:11px;color:var(--text-dim);}
+  .li-badge{font-size:11px;font-weight:700;width:fit-content;}
+  .li-loading{font-size:11px;color:var(--accent-2);}
+  .li-error{font-size:11px;color:var(--danger);}
+  .photo-item-remove{
+    width:30px;flex-shrink:0;border:none;background:transparent;color:var(--text-faint);
+    font-size:16px;cursor:pointer;transition:color .15s ease,background .15s ease;
+  }
+  .photo-item-remove:hover{color:var(--danger);background:rgba(242,89,107,.1);}
+  .photo-item-remove:focus-visible{outline:2px solid var(--accent-2);outline-offset:-2px;}
+  .list-empty-msg{color:var(--text-faint);font-size:12.5px;padding:20px 6px;text-align:center;}
+
+  .savings-great{color:var(--success);}
+  .savings-good{color:var(--success-2);}
+  .savings-ok{color:var(--warning);}
+  .savings-bad{color:var(--danger);}
+
+  /* ---------- main preview ---------- */
+  .empty-state{
+    flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;
+    color:var(--text-dim);text-align:center;padding:40px 20px;
+  }
+  .empty-state svg{width:56px;height:56px;color:var(--text-faint);margin-bottom:6px;}
+  .empty-state p{font-size:16px;font-weight:600;color:var(--text);}
+  .empty-sub{font-size:13px !important;font-weight:400 !important;color:var(--text-dim) !important;}
+  .empty-state[hidden]{display:none;}
+
+  .preview-area{display:flex;flex-direction:column;gap:14px;flex:1;}
+  .preview-area[hidden]{display:none;}
+  .preview-toolbar{display:flex;align-items:center;justify-content:space-between;gap:10px;}
+  .preview-toolbar h2{font-size:15px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:60%;}
+
+  .compare-scroll{
+    position:relative;width:100%;height:min(58vh,560px);overflow:auto;
+    border-radius:var(--radius-md);background:#000;border:1px solid var(--border);
+    touch-action:none;
+  }
+  .compare-stage{position:relative;width:100%;height:100%;margin:0;}
+  .compare-img{
+    position:absolute;inset:0;width:100%;height:100%;object-fit:contain;
+    -webkit-user-drag:none;user-select:none;pointer-events:none;background:#000;
+  }
+  .compare-scroll.zoomed{touch-action:pan-x pan-y;}
+  .compare-scroll.zoomed .compare-img{object-fit:fill;}
+  .compare-clip{position:absolute;inset:0;overflow:hidden;clip-path:inset(0 0 0 50%);}
+  .compare-handle{
+    position:absolute;top:0;bottom:0;left:50%;width:0;transform:translateX(-50%);
+    cursor:ew-resize;touch-action:none;
+  }
+  .compare-handle:focus-visible .grip{outline:2px solid var(--accent-2);outline-offset:2px;}
+  .compare-handle::before{
+    content:"";position:absolute;top:0;bottom:0;left:0;width:2px;transform:translateX(-1px);
+    background:#fff;box-shadow:0 0 10px rgba(0,0,0,.7);
+  }
+  .grip{
+    position:absolute;top:50%;left:0;transform:translate(-50%,-50%);
+    width:38px;height:38px;border-radius:50%;background:var(--accent);
+    display:flex;align-items:center;justify-content:center;gap:6px;
+    box-shadow:0 3px 12px rgba(0,0,0,.5);
+  }
+  .grip::before,.grip::after{content:"";width:0;height:0;border-top:5px solid transparent;border-bottom:5px solid transparent;}
+  .grip::before{border-right:6px solid #fff;}
+  .grip::after{border-left:6px solid #fff;}
+  .compare-label{
+    position:absolute;top:10px;padding:4px 10px;border-radius:999px;
+    background:rgba(0,0,0,.6);color:#fff;font-size:11px;font-weight:600;letter-spacing:.02em;
+    pointer-events:none;
+  }
+  .label-left{left:10px;}
+  .label-right{right:10px;}
+
+  .loading-overlay{
+    position:absolute;inset:18px;border-radius:var(--radius-md);
+    background:rgba(10,12,17,.72);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;
+    color:var(--text-dim);font-size:13px;z-index:5;
+  }
+  .loading-overlay[hidden]{display:none;}
+  .spinner{width:32px;height:32px;border-radius:50%;border:3px solid rgba(255,255,255,.15);border-top-color:var(--accent);animation:spin .8s linear infinite;}
+  .spinner-sm{width:14px;height:14px;border-width:2px;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+
+  .stats-row{display:flex;gap:22px;flex-wrap:wrap;padding:2px 2px;}
+  .stat{display:flex;flex-direction:column;gap:2px;}
+  .stat-label{font-size:11px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.04em;}
+  .stat-value{font-size:15px;font-weight:700;}
+  .processing-msg{color:var(--text-dim);font-size:13px;}
+  .error-msg{color:var(--danger);font-size:13px;font-weight:600;}
+
+  .preview-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:2px;}
+
+  /* ---------- settings panel ---------- */
+  .panel-settings h2{margin-bottom:14px;}
+  .field{margin-bottom:20px;}
+  .field:last-child{margin-bottom:0;}
+  .field > label{display:block;font-size:12.5px;font-weight:700;margin-bottom:8px;color:var(--text);}
+  .hint{font-size:11.5px;color:var(--text-dim);margin-top:7px;line-height:1.45;}
+  .disabled-field{opacity:.45;}
+
+  .pill-group{display:flex;gap:8px;flex-wrap:wrap;}
+  .pill{
+    padding:8px 14px;border-radius:999px;border:1px solid var(--border);background:var(--panel-2);
+    color:var(--text-dim);font-weight:700;font-size:12.5px;cursor:pointer;transition:all .15s ease;
+  }
+  .pill:hover:not(:disabled){border-color:var(--accent);}
+  .pill.active{background:var(--accent);border-color:var(--accent);color:#fff;}
+  .pill:disabled{opacity:.4;cursor:not-allowed;}
+  .pill:focus-visible{outline:2px solid var(--accent-2);outline-offset:2px;}
+
+  .quality-row{display:flex;align-items:center;gap:10px;}
+  input[type=range]{
+    -webkit-appearance:none;appearance:none;flex:1;height:6px;border-radius:999px;background:#262c3a;outline:none;
+  }
+  input[type=range]::-webkit-slider-thumb{
+    -webkit-appearance:none;width:17px;height:17px;border-radius:50%;background:var(--accent);
+    border:2px solid #fff;cursor:pointer;margin-top:0;box-shadow:0 1px 4px rgba(0,0,0,.4);
+  }
+  input[type=range]::-moz-range-thumb{
+    width:17px;height:17px;border-radius:50%;background:var(--accent);border:2px solid #fff;cursor:pointer;
+  }
+  input[type=range]:disabled{opacity:.4;}
+  input[type=number]{
+    background:var(--panel-2);border:1px solid var(--border);color:var(--text);border-radius:8px;
+    padding:8px 9px;font-size:13.5px;width:100%;
+  }
+  input[type=number]:focus-visible{outline:2px solid var(--accent-2);outline-offset:1px;}
+  #qualityNumber{width:56px;flex-shrink:0;text-align:center;}
+
+  .switch-label{display:flex;align-items:center;gap:10px;cursor:pointer;font-weight:700;font-size:12.5px;}
+  .switch-label input{position:absolute;opacity:0;width:0;height:0;}
+  .switch{width:38px;height:21px;background:#262c3a;border-radius:999px;position:relative;transition:background .18s ease;flex-shrink:0;}
+  .switch::before{content:"";position:absolute;width:15px;height:15px;background:#fff;border-radius:50%;top:3px;left:3px;transition:transform .18s ease;}
+  .switch-label input:checked + .switch{background:var(--accent);}
+  .switch-label input:checked + .switch::before{transform:translateX(17px);}
+  .switch-label input:focus-visible + .switch{outline:2px solid var(--accent-2);outline-offset:2px;}
+
+  .resize-fields{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px;}
+  .resize-fields[hidden]{display:none;}
+  .field-inline label{display:block;font-size:11px;color:var(--text-dim);margin-bottom:5px;}
+
+  .preset-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .preset-btn{
+    display:flex;flex-direction:column;gap:4px;padding:11px;border-radius:12px;
+    border:1px solid var(--border);background:var(--panel-2);color:var(--text);
+    cursor:pointer;text-align:left;transition:all .15s ease;font-size:12.5px;font-weight:700;
+  }
+  .preset-btn:hover{border-color:var(--accent);background:#1d2434;}
+  .preset-btn:focus-visible{outline:2px solid var(--accent-2);outline-offset:2px;}
+  .preset-btn span{font-size:10.5px;color:var(--text-dim);font-weight:400;}
+
+  /* ---------- drag overlay ---------- */
+  .drag-overlay{
+    position:fixed;inset:0;background:rgba(8,10,15,.93);z-index:1000;
+    display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;
+    transition:opacity .18s ease;
+  }
+  .drag-overlay.active{opacity:1;pointer-events:auto;}
+  .drag-overlay-inner{
+    text-align:center;border:2px dashed var(--accent);border-radius:24px;padding:60px 90px;color:var(--text);
+  }
+  .drag-overlay-inner svg{width:64px;height:64px;color:var(--accent-2);margin-bottom:16px;}
+  .drag-overlay-inner p{font-size:20px;font-weight:700;}
+
+  /* ---------- toast ---------- */
+  .toast-area{position:fixed;bottom:20px;right:20px;z-index:1200;display:flex;flex-direction:column;gap:10px;}
+  .toast{
+    background:var(--panel-2);border:1px solid var(--danger);color:var(--text);
+    padding:12px 16px;border-radius:12px;font-size:13px;max-width:320px;box-shadow:var(--shadow);
+    animation:toast-in .18s ease;
+  }
+  @keyframes toast-in{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
+
+  a{color:var(--accent-2);}
+
+  @media (max-width:600px){
+    .topbar{padding:12px 16px;}
+    .app{padding:16px 16px 40px;}
+    .summary-bar{margin:16px 16px 0;padding:12px 16px;gap:16px;}
+    .preset-grid{grid-template-columns:1fr;}
+  }
+</style>
+</head>
+<body>
+
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-mark">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 16l4.5-6 3.5 4 2.5-3L20 16"/><rect x="3" y="4" width="18" height="16" rx="3"/><circle cx="8.5" cy="8.5" r="1.5"/></svg>
+      </span>
+      <h1>Komprese fotek</h1>
+    </div>
+    <div class="topbar-spacer"></div>
+    <div id="busyIndicator" hidden><span class="spinner spinner-sm"></span> Zpracovávám fotky…</div>
+    <div class="topbar-actions">
+      <button type="button" class="btn btn-primary" id="pickBtn">Vybrat soubory</button>
+      <input type="file" id="fileInput" multiple hidden
+        accept="image/jpeg,image/png,image/webp,image/avif,image/gif,image/heic,image/heif,.jpg,.jpeg,.png,.webp,.avif,.gif,.heic,.heif">
+    </div>
+  </header>
+
+  <div class="summary-bar" id="summaryBar" hidden>
+    <div class="summary-item"><span class="summary-value" id="sumCount">0</span><span class="summary-label">fotek</span></div>
+    <div class="summary-item"><span class="summary-value" id="sumOriginal">0 B</span><span class="summary-label">původní velikost</span></div>
+    <div class="summary-item"><span class="summary-value" id="sumNew">0 B</span><span class="summary-label">nová velikost</span></div>
+    <div class="summary-item"><span class="summary-value savings" id="sumSavingsPct">0 %</span><span class="summary-label">úspora</span></div>
+    <div class="summary-item"><span class="summary-value savings" id="sumSavingsMB">0 MB</span><span class="summary-label">ušetřeno</span></div>
+    <div class="summary-actions">
+      <button type="button" class="btn btn-secondary" id="downloadZipBtn" hidden>Stáhnout vše (ZIP)</button>
+    </div>
+  </div>
+
+  <div class="app">
+
+    <aside class="panel panel-list" aria-label="Seznam fotek">
+      <div class="list-header">
+        <h2>Fotky (<span id="photoCount">0</span>)</h2>
+        <button type="button" class="btn btn-ghost btn-sm" id="clearAllBtn" disabled>Vyčistit vše</button>
+      </div>
+      <ul class="photo-list" id="photoList"></ul>
+    </aside>
+
+    <section class="panel panel-main" aria-label="Náhled fotky">
+      <div class="empty-state" id="emptyState">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M4 16l4.5-6 3.5 4 2.5-3L20 16"/><rect x="3" y="4" width="18" height="16" rx="3"/><circle cx="8.5" cy="8.5" r="1.5"/>
+        </svg>
+        <p>Přetáhni sem fotky</p>
+        <p class="empty-sub">nebo klikni na tlačítko níže. Podporováno: JPG, PNG, WEBP, AVIF, HEIC, GIF.</p>
+        <button type="button" class="btn btn-primary" id="emptyPickBtn" style="margin-top:8px;">Vybrat soubory</button>
+      </div>
+
+      <div class="preview-area" id="previewArea" hidden>
+        <div class="preview-toolbar">
+          <h2 id="previewName">—</h2>
+          <button type="button" class="btn btn-ghost btn-sm" id="zoomBtn">Zoom 100 %</button>
+        </div>
+
+        <div class="compare-scroll" id="compareScroll">
+          <div class="compare-stage" id="compareStage">
+            <img class="compare-img" id="imgOriginal" alt="Původní fotka">
+            <div class="compare-clip" id="compareClip">
+              <img class="compare-img" id="imgCompressed" alt="Komprimovaná fotka">
+            </div>
+            <div class="compare-handle" id="compareHandle" tabindex="0" role="slider"
+                 aria-label="Porovnání původní a komprimované fotky" aria-valuemin="0" aria-valuemax="100" aria-valuenow="50">
+              <span class="grip"></span>
+            </div>
+            <span class="compare-label label-left">Původní</span>
+            <span class="compare-label label-right">Komprimovaná</span>
+          </div>
+          <div class="loading-overlay" id="loadingOverlay" hidden>
+            <span class="spinner"></span>
+            <span>Zpracovávám náhled…</span>
+          </div>
+        </div>
+
+        <div class="stats-row" id="statsRow"></div>
+
+        <div class="preview-actions">
+          <button type="button" class="btn btn-primary" id="downloadBtn">Stáhnout</button>
+          <button type="button" class="btn btn-danger-ghost" id="removeCurrentBtn">Odebrat fotku</button>
+        </div>
+      </div>
+    </section>
+
+    <aside class="panel panel-settings" aria-label="Nastavení komprese">
+      <h2>Nastavení komprese</h2>
+
+      <div class="field">
+        <label>Výstupní formát</label>
+        <div class="pill-group" id="formatGroup" role="group" aria-label="Výstupní formát">
+          <button type="button" class="pill" data-format="jpeg">JPG</button>
+          <button type="button" class="pill" data-format="webp">WEBP</button>
+          <button type="button" class="pill" data-format="png">PNG</button>
+          <button type="button" class="pill" data-format="avif">AVIF</button>
+        </div>
+        <p class="hint">WEBP obvykle dá nejmenší soubor při zachování kvality. PNG je bezztrátové (větší soubor), AVIF komprimuje nejvíc, ale ne všechny prohlížeče ho umí zobrazit.</p>
+      </div>
+
+      <div class="field" id="qualityFieldWrap">
+        <label for="qualityRange">Kvalita (1–100)</label>
+        <div class="quality-row">
+          <input type="range" id="qualityRange" min="1" max="100" value="80">
+          <input type="number" id="qualityNumber" min="1" max="100" value="80">
+        </div>
+        <p class="hint">Vyšší číslo = lepší kvalita, ale větší soubor. Pro web stačí obvykle 70–85. U PNG se kvalita neuplatní (formát je bezztrátový).</p>
+      </div>
+
+      <div class="field">
+        <label class="switch-label">
+          <input type="checkbox" id="resizeToggle">
+          <span class="switch"></span>
+          Změnit rozměry
+        </label>
+        <p class="hint">Zmenší fotku, pokud přesahuje zadané rozměry. Poměr stran zůstane zachován, obrázek se nezvětšuje.</p>
+        <div class="resize-fields" id="resizeFields" hidden>
+          <div class="field-inline">
+            <label for="maxWidth">Max. šířka (px)</label>
+            <input type="number" id="maxWidth" min="1" value="1920">
+          </div>
+          <div class="field-inline">
+            <label for="maxHeight">Max. výška (px)</label>
+            <input type="number" id="maxHeight" min="1" value="1920">
+          </div>
+        </div>
+      </div>
+
+      <div class="field" id="exifFieldWrap">
+        <label class="switch-label">
+          <input type="checkbox" id="exifToggle">
+          <span class="switch"></span>
+          Zachovat EXIF
+        </label>
+        <p class="hint">Ponechá metadata (datum pořízení, nastavení fotoaparátu, GPS). Funguje pouze při formátu JPG a pokud i původní fotka byla JPG.</p>
+      </div>
+
+      <div class="field">
+        <label>Rychlé předvolby</label>
+        <div class="preset-grid">
+          <button type="button" class="preset-btn" data-preset="web">Web<span>WEBP, kvalita 80</span></button>
+          <button type="button" class="preset-btn" data-preset="email">E-mail<span>JPG, kvalita 70, max 1600 px</span></button>
+          <button type="button" class="preset-btn" data-preset="max">Max. komprese<span>WEBP, kvalita 50</span></button>
+          <button type="button" class="preset-btn" data-preset="lossless">Bez ztráty<span>PNG</span></button>
+        </div>
+      </div>
+    </aside>
+
+  </div>
+
+  <div class="drag-overlay" id="dragOverlay">
+    <div class="drag-overlay-inner">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 16V4M12 4l-4 4M12 4l4 4"/><path d="M4 16v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/>
+      </svg>
+      <p>Pusť soubory sem</p>
+    </div>
+  </div>
+
+  <div class="toast-area" id="toastArea" aria-live="polite"></div>
+
+<script>
+(function(){
+"use strict";
+
+/* ================= state ================= */
+const state = {
+  photos: [],
+  selectedId: null,
+  zoom: false,
+  busy: false,
+  support: { webp: true, avif: false },
+  settings: { format: 'webp', quality: 80, resizeEnabled: false, maxWidth: 1920, maxHeight: 1920, keepExif: false },
+};
+
+const FORMAT_MIME = { jpeg:'image/jpeg', webp:'image/webp', png:'image/png', avif:'image/avif' };
+const EXT_MAP = { jpeg:'jpg', webp:'webp', png:'png', avif:'avif' };
+const SUPPORTED_MIME = ['image/jpeg','image/png','image/webp','image/avif','image/heic','image/heif','image/gif'];
+const SUPPORTED_EXT = /\.(jpe?g|png|webp|avif|heic|heif|gif)$/i;
+
+const PRESETS = {
+  web:      { format:'webp', quality:80, resizeEnabled:false },
+  email:    { format:'jpeg', quality:70, resizeEnabled:true, maxWidth:1600, maxHeight:1600 },
+  max:      { format:'webp', quality:50, resizeEnabled:false },
+  lossless: { format:'png',  quality:100, resizeEnabled:false },
+};
+
+let reprocessTimer = null;
+
+/* ================= helpers ================= */
+function esc(s){
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function formatBytes(bytes){
+  if (bytes == null || isNaN(bytes)) return '—';
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1024*1024) return (bytes/1024).toFixed(1) + ' kB';
+  return (bytes/1024/1024).toFixed(2) + ' MB';
+}
+function savingsClass(pct){
+  if (pct >= 50) return 'great';
+  if (pct >= 20) return 'good';
+  if (pct >= 0) return 'ok';
+  return 'bad';
+}
+function cryptoId(){
+  return (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : ('id-'+Math.random().toString(36).slice(2)+Date.now());
+}
+function isSupportedType(file){
+  if (SUPPORTED_MIME.includes(file.type)) return true;
+  return SUPPORTED_EXT.test(file.name || '');
+}
+function showToast(msg){
+  const area = document.getElementById('toastArea');
+  const el = document.createElement('div');
+  el.className = 'toast';
+  el.textContent = msg;
+  area.appendChild(el);
+  setTimeout(() => el.remove(), 4500);
+}
+function makeCanvas(w, h){
+  if (typeof OffscreenCanvas !== 'undefined') return new OffscreenCanvas(w, h);
+  const c = document.createElement('canvas');
+  c.width = w; c.height = h;
+  return c;
+}
+function canvasToBlob(canvas, mime, quality){
+  if (canvas.convertToBlob) return canvas.convertToBlob({ type: mime, quality });
+  return new Promise(resolve => canvas.toBlob(resolve, mime, quality));
+}
+function outputFilename(photo){
+  const base = photo.name.replace(/\.[^.]+$/, '');
+  const ext = EXT_MAP[state.settings.format];
+  return base + '-min.' + ext;
+}
+
+/* ================= format support detection ================= */
+function testEncode(mime){
+  return new Promise(resolve => {
+    try{
+      const c = document.createElement('canvas');
+      c.width = 2; c.height = 2;
+      c.getContext('2d').fillRect(0,0,2,2);
+      c.toBlob(blob => resolve(!!blob && blob.type === mime), mime, 0.8);
+    }catch(e){ resolve(false); }
+  });
+}
+
+/* ================= EXIF (JPEG only, minimal) ================= */
+async function extractExifSegment(file){
+  try{
+    const head = new Uint8Array(await file.slice(0, 128*1024).arrayBuffer());
+    if (head[0] !== 0xFF || head[1] !== 0xD8) return null;
+    let offset = 2;
+    while (offset < head.length - 4){
+      if (head[offset] !== 0xFF) break;
+      const marker = head[offset+1];
+      if (marker === 0xD8 || marker === 0xD9){ offset += 2; continue; }
+      if (marker >= 0xD0 && marker <= 0xD7){ offset += 2; continue; }
+      if (offset + 4 > head.length) break;
+      const len = (head[offset+2] << 8) | head[offset+3];
+      if (marker === 0xE1 && offset+8 <= head.length){
+        const sig = String.fromCharCode(head[offset+4],head[offset+5],head[offset+6],head[offset+7]);
+        if (sig === 'Exif') return head.slice(offset, offset + 2 + len);
+      }
+      if (marker === 0xDA) break;
+      offset += 2 + len;
+    }
+  }catch(e){ /* ignore, exif optional */ }
+  return null;
+}
+async function injectExifSegment(blob, exifSegment){
+  const buf = new Uint8Array(await blob.arrayBuffer());
+  if (buf[0] !== 0xFF || buf[1] !== 0xD8) return blob;
+  const out = new Uint8Array(2 + exifSegment.length + (buf.length - 2));
+  out.set(buf.subarray(0,2), 0);
+  out.set(exifSegment, 2);
+  out.set(buf.subarray(2), 2 + exifSegment.length);
+  return new Blob([out], { type: 'image/jpeg' });
+}
+
+/* ================= ZIP writer (store, no compression) ================= */
+let crcTable = null;
+function crc32(bytes){
+  if (!crcTable){
+    crcTable = new Uint32Array(256);
+    for (let n=0; n<256; n++){
+      let c = n;
+      for (let k=0; k<8; k++) c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
+      crcTable[n] = c >>> 0;
+    }
+  }
+  let crc = 0xFFFFFFFF;
+  for (let i=0; i<bytes.length; i++) crc = (crc >>> 8) ^ crcTable[(crc ^ bytes[i]) & 0xFF];
+  return (crc ^ 0xFFFFFFFF) >>> 0;
+}
+function dosDateTime(date){
+  const time = (((date.getHours() & 0x1F) << 11) | ((date.getMinutes() & 0x3F) << 5) | ((date.getSeconds() >> 1) & 0x1F)) & 0xFFFF;
+  const dosDate = ((((date.getFullYear()-1980) & 0x7F) << 9) | (((date.getMonth()+1) & 0xF) << 5) | (date.getDate() & 0x1F)) & 0xFFFF;
+  return { time, dosDate };
+}
+async function createZip(entries){
+  const encoder = new TextEncoder();
+  const parts = [];
+  const central = [];
+  let offset = 0;
+  const { time, dosDate } = dosDateTime(new Date());
+
+  for (const entry of entries){
+    const nameBytes = encoder.encode(entry.name);
+    const data = new Uint8Array(await entry.blob.arrayBuffer());
+    const crc = crc32(data);
+    const size = data.length;
+
+    const local = new Uint8Array(30 + nameBytes.length);
+    const ldv = new DataView(local.buffer);
+    ldv.setUint32(0, 0x04034b50, true);
+    ldv.setUint16(4, 20, true);
+    ldv.setUint16(6, 0x0800, true);
+    ldv.setUint16(8, 0, true);
+    ldv.setUint16(10, time, true);
+    ldv.setUint16(12, dosDate, true);
+    ldv.setUint32(14, crc, true);
+    ldv.setUint32(18, size, true);
+    ldv.setUint32(22, size, true);
+    ldv.setUint16(26, nameBytes.length, true);
+    ldv.setUint16(28, 0, true);
+    local.set(nameBytes, 30);
+    parts.push(local, data);
+
+    const cen = new Uint8Array(46 + nameBytes.length);
+    const cdv = new DataView(cen.buffer);
+    cdv.setUint32(0, 0x02014b50, true);
+    cdv.setUint16(4, 20, true);
+    cdv.setUint16(6, 20, true);
+    cdv.setUint16(8, 0x0800, true);
+    cdv.setUint16(10, 0, true);
+    cdv.setUint16(12, time, true);
+    cdv.setUint16(14, dosDate, true);
+    cdv.setUint32(16, crc, true);
+    cdv.setUint32(20, size, true);
+    cdv.setUint32(24, size, true);
+    cdv.setUint16(28, nameBytes.length, true);
+    cdv.setUint16(30, 0, true);
+    cdv.setUint16(32, 0, true);
+    cdv.setUint16(34, 0, true);
+    cdv.setUint16(36, 0, true);
+    cdv.setUint32(38, 0, true);
+    cdv.setUint32(42, offset, true);
+    cen.set(nameBytes, 46);
+    central.push(cen);
+
+    offset += local.length + data.length;
+  }
+
+  const centralSize = central.reduce((s,c) => s + c.length, 0);
+  const centralOffset = offset;
+  const end = new Uint8Array(22);
+  const edv = new DataView(end.buffer);
+  edv.setUint32(0, 0x06054b50, true);
+  edv.setUint16(4, 0, true);
+  edv.setUint16(6, 0, true);
+  edv.setUint16(8, entries.length, true);
+  edv.setUint16(10, entries.length, true);
+  edv.setUint32(12, centralSize, true);
+  edv.setUint32(16, centralOffset, true);
+  edv.setUint16(20, 0, true);
+
+  return new Blob([...parts, ...central, end], { type: 'application/zip' });
+}
+
+/* ================= image pipeline ================= */
+function decodeViaImgElement(file){
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = async () => {
+      try{
+        const bmp = await createImageBitmap(img);
+        URL.revokeObjectURL(url);
+        resolve(bmp);
+      }catch(e){ URL.revokeObjectURL(url); reject(e); }
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('decode failed')); };
+    img.src = url;
+  });
+}
+
+async function initPhoto(photo){
+  try{
+    let bitmap;
+    try{ bitmap = await createImageBitmap(photo.file); }
+    catch(e1){ bitmap = await decodeViaImgElement(photo.file); }
+
+    photo.width = bitmap.width;
+    photo.height = bitmap.height;
+
+    // small thumbnail for the list
+    const thumbScale = Math.min(1, 200/bitmap.width);
+    const tW = Math.max(1, Math.round(bitmap.width*thumbScale));
+    const tH = Math.max(1, Math.round(bitmap.height*thumbScale));
+    const thumbCanvas = document.createElement('canvas');
+    thumbCanvas.width = tW; thumbCanvas.height = tH;
+    thumbCanvas.getContext('2d').drawImage(bitmap, 0, 0, tW, tH);
+    photo.thumbURL = thumbCanvas.toDataURL('image/jpeg', 0.72);
+
+    // capped raster used as the "original" side of the compare view
+    const capScale = Math.min(1, 1800/Math.max(bitmap.width, bitmap.height));
+    const pW = Math.max(1, Math.round(bitmap.width*capScale));
+    const pH = Math.max(1, Math.round(bitmap.height*capScale));
+    const previewCanvas = makeCanvas(pW, pH);
+    previewCanvas.getContext('2d').drawImage(bitmap, 0, 0, pW, pH);
+    const previewBlob = await canvasToBlob(previewCanvas, 'image/png');
+    photo.originalPreviewURL = URL.createObjectURL(previewBlob);
+    photo.previewWidth = pW;
+    photo.previewHeight = pH;
+
+    bitmap.close();
+    photo.status = 'ready';
+  }catch(err){
+    photo.status = 'error';
+    photo.errorMsg = 'Nepodporovaný nebo poškozený formát souboru';
+  }
+}
+
+async function compressPhoto(photo){
+  if (!photo.file || photo.status === 'error') return;
+  photo.status = 'processing';
+  try{
+    let bitmap;
+    try{ bitmap = await createImageBitmap(photo.file); }
+    catch(e1){ bitmap = await decodeViaImgElement(photo.file); }
+
+    let w = bitmap.width, h = bitmap.height;
+    if (state.settings.resizeEnabled){
+      const scale = Math.min(1, state.settings.maxWidth / w, state.settings.maxHeight / h);
+      w = Math.max(1, Math.round(w*scale));
+      h = Math.max(1, Math.round(h*scale));
+    }
+
+    const canvas = makeCanvas(w, h);
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(bitmap, 0, 0, w, h);
+    bitmap.close();
+
+    const mime = FORMAT_MIME[state.settings.format];
+    const quality = state.settings.quality / 100;
+    let blob = await canvasToBlob(canvas, mime, quality);
+
+    if (!blob) throw new Error('Kódování se nezdařilo');
+    if (state.settings.format === 'avif' && blob.type !== 'image/avif'){
+      throw new Error('Váš prohlížeč neumí kódovat do AVIF');
+    }
+
+    if (state.settings.format === 'jpeg' && state.settings.keepExif){
+      if (photo._exifSegment === undefined){
+        photo._exifSegment = await extractExifSegment(photo.file);
+      }
+      if (photo._exifSegment){
+        blob = await injectExifSegment(blob, photo._exifSegment);
+      }
+    }
+
+    if (photo.compressedURL) URL.revokeObjectURL(photo.compressedURL);
+    photo.compressedBlob = blob;
+    photo.compressedURL = URL.createObjectURL(blob);
+    photo.compressedSize = blob.size;
+    photo.compressedWidth = w;
+    photo.compressedHeight = h;
+    photo.status = 'done';
+  }catch(err){
+    photo.status = 'error';
+    photo.errorMsg = err && err.message ? err.message : 'Zpracování selhalo';
+  }
+}
+
+/* ================= batch handling ================= */
+async function handleFiles(fileList){
+  const files = Array.from(fileList);
+  for (const file of files){
+    if (!isSupportedType(file)){
+      const id = cryptoId();
+      state.photos.push({ id, name: file.name, size: file.size, status:'error', errorMsg:'Nepodporovaný formát souboru' });
+      if (!state.selectedId) state.selectedId = id;
+      renderList(); renderSummary(); renderPreview();
+      continue;
+    }
+    const id = cryptoId();
+    const photo = { id, file, name: file.name, size: file.size, status:'loading' };
+    state.photos.push(photo);
+    if (!state.selectedId) state.selectedId = id;
+    renderList(); renderSummary(); renderPreview();
+
+    await initPhoto(photo);
+    renderList(); renderPreview();
+
+    await compressPhoto(photo);
+    renderList(); renderSummary();
+    if (photo.id === state.selectedId) renderPreview();
+  }
+}
+
+function scheduleReprocessAll(){
+  clearTimeout(reprocessTimer);
+  reprocessTimer = setTimeout(reprocessAll, 150);
+}
+async function reprocessAll(){
+  const targets = state.photos.filter(p => p.file && p.status !== 'error');
+  if (!targets.length) return;
+  targets.sort((a,b) => (a.id === state.selectedId ? -1 : 0) - (b.id === state.selectedId ? -1 : 0));
+  state.busy = true;
+  document.getElementById('busyIndicator').hidden = false;
+  for (const p of targets){
+    await compressPhoto(p);
+    renderList();
+    if (p.id === state.selectedId) renderPreview();
+    renderSummary();
+  }
+  state.busy = false;
+  document.getElementById('busyIndicator').hidden = true;
+}
+
+function removePhoto(id){
+  const idx = state.photos.findIndex(p => p.id === id);
+  if (idx < 0) return;
+  const p = state.photos[idx];
+  if (p.originalPreviewURL) URL.revokeObjectURL(p.originalPreviewURL);
+  if (p.compressedURL) URL.revokeObjectURL(p.compressedURL);
+  state.photos.splice(idx, 1);
+  if (state.selectedId === id){
+    state.selectedId = state.photos.length ? state.photos[0].id : null;
+  }
+  renderList(); renderPreview(); renderSummary();
+}
+function clearAll(){
+  for (const p of state.photos){
+    if (p.originalPreviewURL) URL.revokeObjectURL(p.originalPreviewURL);
+    if (p.compressedURL) URL.revokeObjectURL(p.compressedURL);
+  }
+  state.photos = [];
+  state.selectedId = null;
+  renderList(); renderPreview(); renderSummary();
+}
+function selectPhoto(id){
+  state.selectedId = id;
+  setSliderPct(50);
+  renderList(); renderPreview();
+}
+
+/* ================= downloads ================= */
+function downloadCurrent(){
+  const photo = state.photos.find(p => p.id === state.selectedId);
+  if (!photo || !photo.compressedBlob) return;
+  const a = document.createElement('a');
+  a.href = photo.compressedURL;
+  a.download = outputFilename(photo);
+  document.body.appendChild(a); a.click(); a.remove();
+}
+async function downloadAllZip(){
+  const ready = state.photos.filter(p => p.status === 'done' && p.compressedBlob);
+  if (ready.length < 2) return;
+  const used = new Set();
+  const entries = ready.map(p => {
+    let name = outputFilename(p);
+    while (used.has(name)){
+      name = name.replace(/(-min)(\.[a-z0-9]+)$/i, '-min-' + Math.random().toString(36).slice(2,6) + '$2');
+    }
+    used.add(name);
+    return { name, blob: p.compressedBlob };
+  });
+  showToast('Vytvářím ZIP soubor…');
+  const zipBlob = await createZip(entries);
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(zipBlob);
+  a.download = 'komprimovane-fotky.zip';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 15000);
+}
+
+/* ================= presets & settings sync ================= */
+function applyPreset(name){
+  Object.assign(state.settings, PRESETS[name]);
+  syncSettingsUI();
+  scheduleReprocessAll();
+}
+function syncSettingsUI(){
+  document.querySelectorAll('#formatGroup .pill').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.format === state.settings.format);
+  });
+  document.getElementById('qualityRange').value = state.settings.quality;
+  document.getElementById('qualityNumber').value = state.settings.quality;
+  document.getElementById('resizeToggle').checked = state.settings.resizeEnabled;
+  document.getElementById('resizeFields').hidden = !state.settings.resizeEnabled;
+  document.getElementById('maxWidth').value = state.settings.maxWidth;
+  document.getElementById('maxHeight').value = state.settings.maxHeight;
+  document.getElementById('exifToggle').checked = state.settings.keepExif;
+  updateFormatDependentUI();
+}
+function updateFormatDependentUI(){
+  const isPng = state.settings.format === 'png';
+  document.getElementById('qualityRange').disabled = isPng;
+  document.getElementById('qualityNumber').disabled = isPng;
+  document.getElementById('qualityFieldWrap').classList.toggle('disabled-field', isPng);
+
+  const isJpeg = state.settings.format === 'jpeg';
+  document.getElementById('exifToggle').disabled = !isJpeg;
+  document.getElementById('exifFieldWrap').classList.toggle('disabled-field', !isJpeg);
+
+  const avifBtn = document.querySelector('.pill[data-format="avif"]');
+  if (avifBtn){
+    avifBtn.disabled = !state.support.avif;
+    avifBtn.title = state.support.avif ? '' : 'Váš prohlížeč nepodporuje kódování do AVIF';
+  }
+  const webpBtn = document.querySelector('.pill[data-format="webp"]');
+  if (webpBtn){
+    webpBtn.disabled = !state.support.webp;
+    webpBtn.title = state.support.webp ? '' : 'Váš prohlížeč nepodporuje kódování do WEBP';
+  }
+}
+
+/* ================= rendering ================= */
+function renderList(){
+  const ul = document.getElementById('photoList');
+  document.getElementById('photoCount').textContent = state.photos.length;
+  document.getElementById('clearAllBtn').disabled = state.photos.length === 0;
+
+  if (!state.photos.length){
+    ul.innerHTML = '<li class="list-empty-msg">Zatím žádné fotky</li>';
+    return;
+  }
+
+  ul.innerHTML = state.photos.map(p => {
+    const selected = p.id === state.selectedId ? ' selected' : '';
+    let sizeInfo;
+    if (p.status === 'error'){
+      sizeInfo = '<span class="li-error">' + esc(p.errorMsg || 'Chyba') + '</span>';
+    } else if (p.status === 'done'){
+      const pct = p.size > 0 ? (1 - p.compressedSize/p.size) * 100 : 0;
+      const cls = savingsClass(pct);
+      sizeInfo = '<span class="li-size">' + formatBytes(p.size) + ' &rarr; ' + formatBytes(p.compressedSize) + '</span>' +
+                 '<span class="li-badge savings-' + cls + '">' + pct.toFixed(0) + '% úspora</span>';
+    } else {
+      sizeInfo = '<span class="li-size">' + formatBytes(p.size) + '</span><span class="li-loading">zpracovávám…</span>';
+    }
+    const thumb = p.thumbURL
+      ? '<img src="' + p.thumbURL + '" alt="">'
+      : '<span class="thumb-placeholder"></span>';
+    return (
+      '<li class="photo-item' + selected + '" data-id="' + p.id + '">' +
+        '<button type="button" class="photo-item-main" data-select="' + p.id + '">' +
+          '<span class="thumb-wrap">' + thumb + '</span>' +
+          '<span class="photo-item-info">' +
+            '<span class="li-name" title="' + esc(p.name) + '">' + esc(p.name) + '</span>' +
+            sizeInfo +
+          '</span>' +
+        '</button>' +
+        '<button type="button" class="photo-item-remove" data-remove="' + p.id + '" aria-label="Odebrat ' + esc(p.name) + '">&times;</button>' +
+      '</li>'
+    );
+  }).join('');
+}
+
+function renderPreview(){
+  const photo = state.photos.find(p => p.id === state.selectedId);
+  const emptyState = document.getElementById('emptyState');
+  const previewArea = document.getElementById('previewArea');
+
+  if (!photo){
+    emptyState.hidden = false;
+    previewArea.hidden = true;
+    return;
+  }
+  emptyState.hidden = true;
+  previewArea.hidden = false;
+  document.getElementById('previewName').textContent = photo.name;
+
+  const loadingOverlay = document.getElementById('loadingOverlay');
+  loadingOverlay.hidden = !(photo.status === 'loading' || photo.status === 'processing');
+
+  const downloadBtn = document.getElementById('downloadBtn');
+
+  if (photo.status === 'error'){
+    document.getElementById('statsRow').innerHTML = '<p class="error-msg">' + esc(photo.errorMsg || 'Chyba při zpracování') + '</p>';
+    document.getElementById('imgOriginal').removeAttribute('src');
+    document.getElementById('imgCompressed').removeAttribute('src');
+    downloadBtn.disabled = true;
+    return;
+  }
+
+  if (photo.originalPreviewURL) document.getElementById('imgOriginal').src = photo.originalPreviewURL;
+  if (photo.compressedURL) document.getElementById('imgCompressed').src = photo.compressedURL;
+
+  const stage = document.getElementById('compareStage');
+  if (photo.previewWidth && photo.previewHeight){
+    stage.dataset.natW = photo.previewWidth;
+    stage.dataset.natH = photo.previewHeight;
+  }
+  applyZoomState();
+
+  downloadBtn.disabled = !photo.compressedBlob;
+
+  if (photo.status === 'done'){
+    const pct = photo.size > 0 ? (1 - photo.compressedSize/photo.size) * 100 : 0;
+    const cls = savingsClass(pct);
+    document.getElementById('statsRow').innerHTML =
+      '<div class="stat"><span class="stat-label">Původní</span><span class="stat-value">' + formatBytes(photo.size) + '</span></div>' +
+      '<div class="stat"><span class="stat-label">Komprimovaná</span><span class="stat-value">' + formatBytes(photo.compressedSize) + '</span></div>' +
+      '<div class="stat"><span class="stat-label">Úspora</span><span class="stat-value savings-' + cls + '">' + pct.toFixed(0) + ' %</span></div>' +
+      '<div class="stat"><span class="stat-label">Rozměry</span><span class="stat-value">' + photo.width + '&times;' + photo.height + ' &rarr; ' + photo.compressedWidth + '&times;' + photo.compressedHeight + '</span></div>';
+  } else {
+    document.getElementById('statsRow').innerHTML = '<p class="processing-msg">Zpracovávám náhled…</p>';
+  }
+}
+
+function renderSummary(){
+  const bar = document.getElementById('summaryBar');
+  const done = state.photos.filter(p => p.status === 'done');
+
+  if (!state.photos.length){
+    bar.hidden = true;
+  } else {
+    bar.hidden = false;
+    const totalOriginal = state.photos.reduce((s,p) => s + (p.size || 0), 0);
+    const totalNew = done.reduce((s,p) => s + (p.compressedSize || 0), 0);
+    const doneOriginal = done.reduce((s,p) => s + (p.size || 0), 0);
+    const savedBytes = doneOriginal - totalNew;
+    const pct = doneOriginal > 0 ? (savedBytes/doneOriginal) * 100 : 0;
+    document.getElementById('sumCount').textContent = state.photos.length;
+    document.getElementById('sumOriginal').textContent = formatBytes(totalOriginal);
+    document.getElementById('sumNew').textContent = formatBytes(totalNew);
+    document.getElementById('sumSavingsPct').textContent = pct.toFixed(0) + ' %';
+    document.getElementById('sumSavingsMB').textContent = formatBytes(Math.max(0, savedBytes));
+  }
+  document.getElementById('downloadZipBtn').hidden = done.length < 2;
+}
+
+/* ================= compare slider ================= */
+function setSliderPct(pct){
+  pct = Math.max(0, Math.min(100, pct));
+  document.getElementById('compareClip').style.clipPath = 'inset(0 0 0 ' + pct + '%)';
+  const handle = document.getElementById('compareHandle');
+  handle.style.left = pct + '%';
+  handle.setAttribute('aria-valuenow', Math.round(pct));
+}
+function applyZoomState(){
+  const stage = document.getElementById('compareStage');
+  const scroll = document.getElementById('compareScroll');
+  if (state.zoom){
+    const w = stage.dataset.natW, h = stage.dataset.natH;
+    if (w && h){
+      stage.style.width = w + 'px';
+      stage.style.height = h + 'px';
+    }
+    scroll.classList.add('zoomed');
+  } else {
+    stage.style.width = '';
+    stage.style.height = '';
+    scroll.classList.remove('zoomed');
+  }
+}
+function setupCompareSlider(){
+  const stage = document.getElementById('compareStage');
+  const handle = document.getElementById('compareHandle');
+  let dragging = false;
+
+  function pctFromEvent(e){
+    const rect = stage.getBoundingClientRect();
+    return ((e.clientX - rect.left) / rect.width) * 100;
+  }
+  stage.addEventListener('pointerdown', e => {
+    dragging = true;
+    if (handle.setPointerCapture) { try{ handle.setPointerCapture(e.pointerId); }catch(_){} }
+    setSliderPct(pctFromEvent(e));
+    e.preventDefault();
+  });
+  window.addEventListener('pointermove', e => { if (dragging) setSliderPct(pctFromEvent(e)); });
+  window.addEventListener('pointerup', () => { dragging = false; });
+
+  handle.addEventListener('keydown', e => {
+    const cur = Number(handle.getAttribute('aria-valuenow')) || 50;
+    const step = e.shiftKey ? 10 : 2;
+    if (e.key === 'ArrowLeft'){ setSliderPct(cur - step); e.preventDefault(); }
+    else if (e.key === 'ArrowRight'){ setSliderPct(cur + step); e.preventDefault(); }
+    else if (e.key === 'Home'){ setSliderPct(0); e.preventDefault(); }
+    else if (e.key === 'End'){ setSliderPct(100); e.preventDefault(); }
+  });
+}
+
+/* ================= drag & drop ================= */
+function setupDragDrop(){
+  const overlay = document.getElementById('dragOverlay');
+  let counter = 0;
+  window.addEventListener('dragenter', e => {
+    if (!e.dataTransfer || !e.dataTransfer.types || e.dataTransfer.types.indexOf('Files') === -1) return;
+    e.preventDefault();
+    counter++;
+    overlay.classList.add('active');
+  });
+  window.addEventListener('dragover', e => {
+    if (e.dataTransfer && e.dataTransfer.types && e.dataTransfer.types.indexOf('Files') !== -1) e.preventDefault();
+  });
+  window.addEventListener('dragleave', e => {
+    counter = Math.max(0, counter - 1);
+    if (counter === 0) overlay.classList.remove('active');
+  });
+  window.addEventListener('drop', e => {
+    e.preventDefault();
+    counter = 0;
+    overlay.classList.remove('active');
+    if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length){
+      handleFiles(e.dataTransfer.files);
+    }
+  });
+}
+
+/* ================= events ================= */
+function initEvents(){
+  document.getElementById('pickBtn').addEventListener('click', () => document.getElementById('fileInput').click());
+  document.getElementById('emptyPickBtn').addEventListener('click', () => document.getElementById('fileInput').click());
+  document.getElementById('fileInput').addEventListener('change', e => {
+    if (e.target.files.length) handleFiles(e.target.files);
+    e.target.value = '';
+  });
+
+  document.querySelectorAll('#formatGroup .pill').forEach(btn => {
+    btn.addEventListener('click', () => {
+      if (btn.disabled) return;
+      state.settings.format = btn.dataset.format;
+      syncSettingsUI();
+      scheduleReprocessAll();
+    });
+  });
+
+  const qRange = document.getElementById('qualityRange');
+  const qNum = document.getElementById('qualityNumber');
+  qRange.addEventListener('input', () => {
+    qNum.value = qRange.value;
+    state.settings.quality = Number(qRange.value);
+    scheduleReprocessAll();
+  });
+  qNum.addEventListener('input', () => {
+    let v = Math.min(100, Math.max(1, Number(qNum.value) || 1));
+    qRange.value = v;
+    state.settings.quality = v;
+    scheduleReprocessAll();
+  });
+
+  document.getElementById('resizeToggle').addEventListener('change', e => {
+    state.settings.resizeEnabled = e.target.checked;
+    document.getElementById('resizeFields').hidden = !e.target.checked;
+    scheduleReprocessAll();
+  });
+  document.getElementById('maxWidth').addEventListener('input', e => {
+    state.settings.maxWidth = Math.max(1, Number(e.target.value) || 1);
+    scheduleReprocessAll();
+  });
+  document.getElementById('maxHeight').addEventListener('input', e => {
+    state.settings.maxHeight = Math.max(1, Number(e.target.value) || 1);
+    scheduleReprocessAll();
+  });
+
+  document.getElementById('exifToggle').addEventListener('change', e => {
+    state.settings.keepExif = e.target.checked;
+    scheduleReprocessAll();
+  });
+
+  document.querySelectorAll('.preset-btn').forEach(btn => {
+    btn.addEventListener('click', () => applyPreset(btn.dataset.preset));
+  });
+
+  document.getElementById('photoList').addEventListener('click', e => {
+    const selBtn = e.target.closest('[data-select]');
+    if (selBtn){ selectPhoto(selBtn.dataset.select); return; }
+    const remBtn = e.target.closest('[data-remove]');
+    if (remBtn){ removePhoto(remBtn.dataset.remove); return; }
+  });
+
+  document.getElementById('clearAllBtn').addEventListener('click', clearAll);
+  document.getElementById('downloadBtn').addEventListener('click', downloadCurrent);
+  document.getElementById('downloadZipBtn').addEventListener('click', downloadAllZip);
+  document.getElementById('removeCurrentBtn').addEventListener('click', () => {
+    if (state.selectedId) removePhoto(state.selectedId);
+  });
+  document.getElementById('zoomBtn').addEventListener('click', () => {
+    state.zoom = !state.zoom;
+    document.getElementById('zoomBtn').textContent = state.zoom ? 'Přizpůsobit' : 'Zoom 100 %';
+    applyZoomState();
+  });
+
+  setupCompareSlider();
+  setupDragDrop();
+}
+
+/* ================= init ================= */
+(async function main(){
+  try{
+    state.support.webp = await testEncode('image/webp');
+    state.support.avif = await testEncode('image/avif');
+  }catch(e){ /* keep defaults */ }
+  syncSettingsUI();
+  renderList();
+  renderPreview();
+  renderSummary();
+  initEvents();
+})();
+
+})();
+</script>
+</body>
+</html>
