@@ -63,6 +63,7 @@
   .topbar-spacer{flex:1;}
   .topbar-actions{display:flex;gap:10px;align-items:center;}
   #busyIndicator{display:flex;align-items:center;gap:8px;color:var(--text-dim);font-size:13px;}
+  #busyIndicator[hidden]{display:none;}
 
   /* ---------- buttons ---------- */
   .btn{
@@ -103,12 +104,11 @@
   /* ---------- layout ---------- */
   .app{
     display:grid;
-    grid-template-columns:280px minmax(0,1fr) 320px;
+    grid-template-columns:minmax(260px,300px) minmax(0,1fr) minmax(300px,360px);
     grid-template-areas:"list main settings";
     gap:20px;
     padding:20px 24px 48px;
-    max-width:1680px;
-    margin:0 auto;
+    width:100%;
   }
   @media (max-width:1000px){
     .app{grid-template-columns:1fr;grid-template-areas:"main" "list" "settings";}
@@ -180,7 +180,7 @@
   .preview-toolbar h2{font-size:15px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:60%;}
 
   .compare-scroll{
-    position:relative;width:100%;height:min(58vh,560px);overflow:auto;
+    position:relative;width:100%;height:min(64vh,760px);overflow:auto;
     border-radius:var(--radius-md);background:#000;border:1px solid var(--border);
     touch-action:none;
   }
@@ -276,11 +276,18 @@
 
   .switch-label{display:flex;align-items:center;gap:10px;cursor:pointer;font-weight:700;font-size:12.5px;}
   .switch-label input{position:absolute;opacity:0;width:0;height:0;}
-  .switch{width:38px;height:21px;background:#262c3a;border-radius:999px;position:relative;transition:background .18s ease;flex-shrink:0;}
-  .switch::before{content:"";position:absolute;width:15px;height:15px;background:#fff;border-radius:50%;top:3px;left:3px;transition:transform .18s ease;}
-  .switch-label input:checked + .switch{background:var(--accent);}
-  .switch-label input:checked + .switch::before{transform:translateX(17px);}
+  .switch{width:38px;height:21px;background:#2a3142;border:1px solid #3a4359;border-radius:999px;position:relative;transition:background .18s ease,border-color .18s ease;flex-shrink:0;}
+  .switch::before{content:"";position:absolute;width:15px;height:15px;background:#e7e9f0;border-radius:50%;top:2px;left:2px;transition:transform .18s ease;box-shadow:0 1px 3px rgba(0,0,0,.4);}
+  .switch-label input:checked + .switch{background:var(--accent);border-color:var(--accent);}
+  .switch-label input:checked + .switch::before{transform:translateX(17px);background:#fff;}
   .switch-label input:focus-visible + .switch{outline:2px solid var(--accent-2);outline-offset:2px;}
+  .switch-text{flex:1;}
+  .chevron{
+    display:inline-block;width:7px;height:7px;flex-shrink:0;
+    border-right:2px solid var(--text-faint);border-bottom:2px solid var(--text-faint);
+    transform:rotate(45deg);transition:transform .18s ease,border-color .18s ease;margin-right:2px;
+  }
+  .switch-label input:checked ~ .chevron{transform:rotate(-135deg);border-color:var(--accent-2);}
 
   .resize-fields{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px;}
   .resize-fields[hidden]{display:none;}
@@ -438,7 +445,8 @@
         <label class="switch-label">
           <input type="checkbox" id="resizeToggle">
           <span class="switch"></span>
-          Změnit rozměry
+          <span class="switch-text">Změnit rozměry</span>
+          <span class="chevron" aria-hidden="true"></span>
         </label>
         <p class="hint">Zmenší fotku, pokud přesahuje zadané rozměry. Poměr stran zůstane zachován, obrázek se nezvětšuje.</p>
         <div class="resize-fields" id="resizeFields" hidden>
@@ -457,7 +465,8 @@
         <label class="switch-label">
           <input type="checkbox" id="exifToggle">
           <span class="switch"></span>
-          Zachovat EXIF
+          <span class="switch-text">Zachovat EXIF</span>
+          <span class="chevron" aria-hidden="true"></span>
         </label>
         <p class="hint">Ponechá metadata (datum pořízení, nastavení fotoaparátu, GPS). Funguje pouze při formátu JPG a pokud i původní fotka byla JPG.</p>
       </div>
