@@ -157,10 +157,12 @@
   .li-loading{font-size:11px;color:var(--accent-2);}
   .li-error{font-size:11px;color:var(--danger);}
   .photo-item-remove{
-    width:30px;flex-shrink:0;border:none;background:transparent;color:var(--text-faint);
-    font-size:16px;cursor:pointer;transition:color .15s ease,background .15s ease;
+    width:36px;flex-shrink:0;border:none;background:transparent;color:var(--danger);opacity:.7;
+    display:flex;align-items:center;justify-content:center;
+    cursor:pointer;transition:color .15s ease,background .15s ease,opacity .15s ease;
   }
-  .photo-item-remove:hover{color:var(--danger);background:rgba(242,89,107,.1);}
+  .photo-item-remove svg{width:16px;height:16px;}
+  .photo-item-remove:hover{opacity:1;background:rgba(242,89,107,.14);}
   .photo-item-remove:focus-visible{outline:2px solid var(--accent-2);outline-offset:-2px;}
   .list-empty-msg{color:var(--text-faint);font-size:12.5px;padding:20px 6px;text-align:center;}
 
@@ -181,10 +183,15 @@
 
   .preview-area{display:flex;flex-direction:column;gap:14px;flex:1;min-height:0;}
   .preview-area[hidden]{display:none;}
-  .preview-toolbar{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-shrink:0;}
-  .preview-toolbar h2{font-size:15px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:70%;}
 
   .compare-viewport{position:relative;flex:1;min-height:280px;}
+  .compare-filename{
+    position:absolute;top:10px;left:50%;transform:translateX(-50%);z-index:6;
+    max-width:calc(100% - 180px);padding:6px 14px;border-radius:999px;
+    background:rgba(0,0,0,.6);color:#fff;font-size:12.5px;font-weight:700;
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+    pointer-events:none;
+  }
   .compare-scroll{
     position:absolute;inset:0;overflow:auto;
     border-radius:var(--radius-md);background:#000;border:1px solid var(--border);
@@ -268,8 +275,6 @@
   .stat-value{font-size:14px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
   .processing-msg{color:var(--text-dim);font-size:13px;grid-column:1/-1;}
   .error-msg{color:var(--danger);font-size:13px;font-weight:600;grid-column:1/-1;}
-
-  .preview-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:2px;}
 
   /* ---------- settings panel ---------- */
   .panel-settings h2{margin-bottom:14px;}
@@ -423,10 +428,6 @@
       </div>
 
       <div class="preview-area" id="previewArea" hidden>
-        <div class="preview-toolbar">
-          <h2 id="previewName">—</h2>
-        </div>
-
         <div class="compare-viewport" id="compareViewport">
           <div class="compare-scroll" id="compareScroll">
             <div class="compare-stage" id="compareStage">
@@ -446,15 +447,12 @@
               <span>Zpracovávám náhled…</span>
             </div>
           </div>
+          <h2 class="compare-filename" id="previewName">—</h2>
           <div class="zoom-toolbar" id="zoomToolbar">
             <button type="button" class="zoom-btn" id="zoomOutBtn" aria-label="Oddálit">&minus;</button>
             <span class="zoom-pct" id="zoomPctLabel" title="Kliknutím obnovíš na 100 %">100%</span>
             <button type="button" class="zoom-btn" id="zoomInBtn" aria-label="Přiblížit">+</button>
           </div>
-        </div>
-
-        <div class="preview-actions">
-          <button type="button" class="btn btn-danger-ghost" id="removeCurrentBtn">Odebrat fotku</button>
         </div>
       </div>
     </section>
@@ -564,6 +562,10 @@ const FORMAT_MIME = { jpeg:'image/jpeg', webp:'image/webp', png:'image/png', avi
 const EXT_MAP = { jpeg:'jpg', webp:'webp', png:'png', avif:'avif' };
 const SUPPORTED_MIME = ['image/jpeg','image/png','image/webp','image/avif','image/heic','image/heif','image/gif'];
 const SUPPORTED_EXT = /\.(jpe?g|png|webp|avif|heic|heif|gif)$/i;
+const TRASH_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+  '<path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>' +
+  '<path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>' +
+  '<line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>';
 
 const PRESETS = {
   web:      { format:'webp', quality:80, resizeEnabled:false },
@@ -1042,7 +1044,7 @@ function renderList(){
             sizeInfo +
           '</span>' +
         '</button>' +
-        '<button type="button" class="photo-item-remove" data-remove="' + p.id + '" aria-label="Odebrat ' + esc(p.name) + '">&times;</button>' +
+        '<button type="button" class="photo-item-remove" data-remove="' + p.id + '" aria-label="Odebrat ' + esc(p.name) + '">' + TRASH_ICON + '</button>' +
       '</li>'
     );
   }).join('');
@@ -1276,9 +1278,6 @@ function initEvents(){
   document.getElementById('clearAllBtn').addEventListener('click', clearAll);
   document.getElementById('downloadBtn').addEventListener('click', downloadCurrent);
   document.getElementById('downloadZipBtn').addEventListener('click', downloadAllZip);
-  document.getElementById('removeCurrentBtn').addEventListener('click', () => {
-    if (state.selectedId) removePhoto(state.selectedId);
-  });
   document.getElementById('zoomInBtn').addEventListener('click', () => setZoomPct(state.zoomPct + ZOOM_STEP));
   document.getElementById('zoomOutBtn').addEventListener('click', () => setZoomPct(state.zoomPct - ZOOM_STEP));
   document.getElementById('zoomPctLabel').addEventListener('click', () => setZoomPct(100));
