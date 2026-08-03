@@ -63,12 +63,11 @@
   }
   .brand{display:flex;align-items:center;gap:12px;}
   .brand-mark{
-    width:36px;height:36px;border-radius:12px;
-    background:var(--accent);color:var(--accent-ink);
-    box-shadow:0 6px 18px rgba(169,217,0,.35);
+    width:36px;height:36px;
     display:flex;align-items:center;justify-content:center;flex-shrink:0;
+    filter:drop-shadow(0 6px 14px rgba(169,217,0,.35));
   }
-  .brand-mark svg{width:19px;height:19px;stroke:currentColor;}
+  .brand-mark svg{width:36px;height:36px;}
   .brand h1{font-size:17px;font-weight:700;letter-spacing:-.01em;}
   .topbar-right{display:flex;align-items:center;gap:16px;justify-self:end;}
   .topbar-actions{display:flex;gap:10px;align-items:center;}
@@ -412,7 +411,15 @@
   <header class="topbar">
     <div class="brand">
       <span class="brand-mark">
-        <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 16l4.5-6 3.5 4 2.5-3L20 16"/><rect x="3" y="4" width="18" height="16" rx="3"/><circle cx="8.5" cy="8.5" r="1.5"/></svg>
+        <svg width="256" height="256" viewBox="0 0 256 256" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path fill-rule="evenodd" clip-rule="evenodd" d="M256 179.2C256 221.615 221.615 256 179.2 256H76.8C34.3845 256 0 221.615 0 179.2V76.8C0 34.3845 34.3845 0 76.8 0H179.2C221.615 0 256 34.3845 256 76.8V179.2ZM201.599 115.2C201.599 120.502 197.3 124.8 191.999 124.8H147.199C138.363 124.8 131.2 117.637 131.2 108.8V64.0001C131.2 58.6981 135.497 54.4 140.799 54.4C146.102 54.4 150.399 58.6981 150.399 64.0001V92.0252L185.212 57.2119C188.961 53.4628 195.039 53.4628 198.788 57.2119C202.537 60.9609 202.537 67.0394 198.788 70.7885L163.977 105.6H191.999C197.3 105.6 201.599 109.898 201.599 115.2ZM54.4012 140.8C54.4012 135.498 58.6993 131.2 64.0012 131.2H108.801C117.637 131.2 124.801 138.363 124.801 147.2V191.999C124.801 197.3 120.503 201.599 115.201 201.599C109.898 201.599 105.601 197.3 105.601 191.999V163.976L70.7884 198.788C67.0394 202.537 60.9609 202.537 57.2119 198.788C53.4629 195.039 53.4629 188.96 57.2119 185.211L92.0232 150.4H64.0012C58.6993 150.4 54.4012 146.102 54.4012 140.8Z" fill="url(#brandmark-gradient)"/>
+          <defs>
+            <linearGradient id="brandmark-gradient" x1="89.5" y1="60.5" x2="349" y2="373" gradientUnits="userSpaceOnUse">
+              <stop stop-color="#A9D900"/>
+              <stop offset="1" stop-color="#7BA800"/>
+            </linearGradient>
+          </defs>
+        </svg>
       </span>
       <h1>Compres.me</h1>
     </div>
